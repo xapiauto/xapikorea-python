@@ -20,5 +20,14 @@ dependencies = [
   "httpx>=0.27,<1",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "build>=1.2,<2",
+  "pytest>=8,<10",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/xapikorea"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

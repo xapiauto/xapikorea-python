@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from .errors import APIError, XAPIKoreaError
-from .models import AccountInfo
+from .models import AccountInfo, SearchResponse
 
 
 class XAPIKorea:
@@ -47,9 +47,63 @@ class XAPIKorea:
         except (KeyError, TypeError) as exc:
             raise XAPIKoreaError("Unexpected response from GET /v1/me") from exc
 
-    def _request(self, method: str, path: str) -> Any:
+    def search(
+        self,
+        *,
+        brand: str | None = None,
+        model: str | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
+        fuel_type: str | None = None,
+        transmission: str | None = None,
+        body_style: str | None = None,
+        car_type: str | None = None,
+        is_accident_free: bool | None = None,
+        sort: str | None = None,
+        page: int = 1,
+        limit: int = 20,
+        lang: str = "en",
+    ) -> SearchResponse:
+        params = {
+            "brand": brand,
+            "model": model,
+            "year_from": year_from,
+            "year_to": year_to,
+            "price_min": price_min,
+            "price_max": price_max,
+            "fuel_type": fuel_type,
+            "transmission": transmission,
+            "body_style": body_style,
+            "car_type": car_type,
+            "is_accident_free": is_accident_free,
+            "sort": sort,
+            "page": page,
+            "limit": limit,
+            "lang": lang,
+        }
+        data = self._request(
+            "GET",
+            "v1/search",
+            params={key: value for key, value in params.items() if value is not None},
+        )
+        if not isinstance(data, dict):
+            raise XAPIKoreaError("Unexpected response from GET /v1/search")
+
         try:
-            response = self._client.request(method, path)
+            return SearchResponse.from_dict(data)
+        except (KeyError, TypeError) as exc:
+            raise XAPIKoreaError("Unexpected response from GET /v1/search") from exc
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, str | int | bool] | None = None,
+    ) -> Any:
+        try:
+            response = self._client.request(method, path, params=params)
         except httpx.TimeoutException as exc:
             raise XAPIKoreaError("Request timed out") from exc
         except httpx.RequestError as exc:
@@ -74,4 +128,3 @@ class XAPIKorea:
             )
 
         return body
-

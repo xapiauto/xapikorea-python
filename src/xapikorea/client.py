@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 
+from ._version import __version__
 from .errors import APIError, XAPIKoreaError
 from .models import AccountInfo, Car, InspectionReport, SearchResponse
 
@@ -24,7 +25,7 @@ class XAPIKorea:
             headers={
                 "X-API-Key": api_key,
                 "Accept": "application/json",
-                "User-Agent": "xapikorea-python/0.1.0",
+                "User-Agent": f"xapikorea-python/{__version__}",
             },
         )
 

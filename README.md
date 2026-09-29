@@ -1,9 +1,17 @@
 # XAPI Korea Python
 
 Python client for the XAPI Korea API. The current version supports account
-information, vehicle search and vehicle details.
+information, vehicle search, vehicle details and inspection history.
 
-## Setup
+## Installation
+
+Python 3.10 or newer is required.
+
+```bash
+python -m pip install xapikorea
+```
+
+## Development setup
 
 ```bash
 python -m venv .venv
@@ -77,3 +85,11 @@ Use `base_url` to point the client at a local API:
 ```python
 client = XAPIKorea("enc_test_key", base_url="http://localhost:8000")
 ```
+
+## License
+
+This project is licensed under the [MIT License](https://github.com/xapiauto/xapikorea-python/blob/main/LICENSE).
+
+## Support
+
+For bugs and feature requests, [open a GitHub issue](https://github.com/xapiauto/xapikorea-python/issues).

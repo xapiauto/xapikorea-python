@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from .errors import APIError, XAPIKoreaError
-from .models import AccountInfo, SearchResponse
+from .models import AccountInfo, Car, InspectionReport, SearchResponse
 
 
 class XAPIKorea:
@@ -95,6 +95,33 @@ class XAPIKorea:
             return SearchResponse.from_dict(data)
         except (KeyError, TypeError) as exc:
             raise XAPIKoreaError("Unexpected response from GET /v1/search") from exc
+
+    def get_car(self, car_id: int, *, lang: str = "en") -> Car:
+        data = self._request(
+            "GET",
+            f"v1/cars/{car_id}",
+            params={"lang": lang},
+        )
+        if not isinstance(data, dict):
+            raise XAPIKoreaError(f"Unexpected response from GET /v1/cars/{car_id}")
+
+        try:
+            return Car.from_dict(data)
+        except (KeyError, TypeError) as exc:
+            raise XAPIKoreaError(
+                f"Unexpected response from GET /v1/cars/{car_id}"
+            ) from exc
+
+    def get_inspection(self, car_id: int, *, lang: str = "en") -> InspectionReport:
+        path = f"v1/cars/{car_id}/inspection"
+        data = self._request("GET", path, params={"lang": lang})
+        if not isinstance(data, dict):
+            raise XAPIKoreaError(f"Unexpected response from GET /{path}")
+
+        try:
+            return InspectionReport.from_dict(data)
+        except (KeyError, TypeError) as exc:
+            raise XAPIKoreaError(f"Unexpected response from GET /{path}") from exc
 
     def _request(
         self,

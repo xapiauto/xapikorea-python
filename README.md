@@ -1,7 +1,7 @@
 # XAPI Korea Python
 
-Python client for the XAPI Korea API. The current version includes the base
-client and the `/v1/me` endpoint.
+Python client for the XAPI Korea API. The current version supports account
+information, vehicle search and vehicle details.
 
 ## Setup
 
@@ -46,6 +46,30 @@ with XAPIKorea(os.environ["XAPIKOREA_API_KEY"]) as client:
 
 for car in results.results:
     print(car.manufacturer, car.model, car.price_krw)
+```
+
+Retrieve full vehicle details and photos:
+
+```python
+with XAPIKorea(os.environ["XAPIKOREA_API_KEY"]) as client:
+    car = client.get_car(42662587)
+
+print(car.manufacturer, car.model, car.price_krw)
+print(*car.photos, sep="\n")
+```
+
+Retrieve the vehicle's inspection report:
+
+```python
+with XAPIKorea(os.environ["XAPIKOREA_API_KEY"]) as client:
+    inspection = client.get_inspection(42662587)
+
+if not inspection.available:
+    print("No inspection sheet is available")
+elif inspection.had_accident:
+    print("The inspection sheet reports accident history")
+else:
+    print("No accident history reported on the inspection sheet")
 ```
 
 Use `base_url` to point the client at a local API:

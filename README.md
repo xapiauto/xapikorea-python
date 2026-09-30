@@ -1,7 +1,15 @@
-# XAPI Korea Python
+# Encar API Python Client — XAPI Korea
 
-Python client for the XAPI Korea API. The current version supports account
-information, vehicle search, vehicle details and inspection history.
+[![PyPI](https://img.shields.io/pypi/v/xapikorea)](https://pypi.org/project/xapikorea/)
+
+Python SDK for the XAPI Korea **Encar API**. Search used-car listings from Encar
+(Korea's largest used-car marketplace) and get prices, specs, photos and
+inspection history, with English translations of supported fields.
+
+> XAPI Korea is an independent service. It is not affiliated with or endorsed by Encar.
+
+- API docs: https://xapikorea.com/docs
+- Free API key (no credit card): https://xapikorea.com/signup
 
 ## Installation
 

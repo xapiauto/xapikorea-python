@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "xapikorea"
 dynamic = ["version"]
-description = "Official Python SDK for the XAPI Korea API"
+description = "Encar API client for Python: search Korean used-car listings, prices, specs, photos and inspection history via XAPI Korea (independent, unofficial)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -13,7 +13,8 @@ license-files = ["LICENSE"]
 authors = [
   { name = "XAPI Korea" },
 ]
-keywords = ["automotive", "korea", "sdk", "vehicles", "xapi-korea"]
+keywords = ["encar", "encar api", "encar.com", "encar parser", "korean car api", "used car api", "korean used cars", "car data", "vehicle data", "automotive", "xapi korea"]
+
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",

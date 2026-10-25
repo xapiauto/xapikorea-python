@@ -1,12 +1,28 @@
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
+from urllib.parse import quote
 
 import httpx
 
 from ._version import __version__
 from .errors import APIError, XAPIKoreaError
-from .models import AccountInfo, Car, InspectionReport, SearchResponse
+from .models import (
+    AccountInfo,
+    Car,
+    CarSummary,
+    CountResponse,
+    FiltersResponse,
+    InspectionReport,
+    InsuranceHistory,
+    MakeModelsResponse,
+    SearchResponse,
+    TrimsResponse,
+    _strings,
+)
+
+T = TypeVar("T")
 
 
 class XAPIKorea:
@@ -66,7 +82,18 @@ class XAPIKorea:
         page: int = 1,
         limit: int = 20,
         lang: str = "en",
+        source: str = "encar",
+        currency: str = "krw",
+        mileage_min: int | None = None,
+        mileage_max: int | None = None,
+        sale_type: str | None = None,
+        color: str | None = None,
+        trim: str | None = None,
+        generation: str | None = None,
+        badge_group: str | None = None,
+        badge: str | None = None,
     ) -> SearchResponse:
+        """Search one marketplace or both; follow next_page with identical filters."""
         params = {
             "brand": brand,
             "model": model,
@@ -83,6 +110,16 @@ class XAPIKorea:
             "page": page,
             "limit": limit,
             "lang": lang,
+            "source": source,
+            "currency": currency,
+            "mileage_min": mileage_min,
+            "mileage_max": mileage_max,
+            "sale_type": sale_type,
+            "color": color,
+            "trim": trim,
+            "generation": generation,
+            "badge_group": badge_group,
+            "badge": badge,
         }
         data = self._request(
             "GET",
@@ -97,11 +134,11 @@ class XAPIKorea:
         except (KeyError, TypeError) as exc:
             raise XAPIKoreaError("Unexpected response from GET /v1/search") from exc
 
-    def get_car(self, car_id: int, *, lang: str = "en") -> Car:
+    def get_car(self, car_id: int, *, lang: str = "en", source: str = "encar") -> Car:
         data = self._request(
             "GET",
             f"v1/cars/{car_id}",
-            params={"lang": lang},
+            params={"lang": lang, "source": source},
         )
         if not isinstance(data, dict):
             raise XAPIKoreaError(f"Unexpected response from GET /v1/cars/{car_id}")
@@ -113,14 +150,135 @@ class XAPIKorea:
                 f"Unexpected response from GET /v1/cars/{car_id}"
             ) from exc
 
-    def get_inspection(self, car_id: int, *, lang: str = "en") -> InspectionReport:
+    def get_inspection(
+        self, car_id: int, *, lang: str = "en", source: str = "encar"
+    ) -> InspectionReport:
         path = f"v1/cars/{car_id}/inspection"
-        data = self._request("GET", path, params={"lang": lang})
+        data = self._request("GET", path, params={"lang": lang, "source": source})
         if not isinstance(data, dict):
             raise XAPIKoreaError(f"Unexpected response from GET /{path}")
 
         try:
             return InspectionReport.from_dict(data)
+        except (KeyError, TypeError) as exc:
+            raise XAPIKoreaError(f"Unexpected response from GET /{path}") from exc
+
+    def get_insurance(self, car_id: int, *, source: str = "encar") -> InsuranceHistory:
+        """Get Encar insurance history; unavailable records mean unknown history."""
+        return self._get_object(
+            f"v1/cars/{car_id}/insurance", InsuranceHistory.from_dict, {"source": source}
+        )
+
+    def get_images(self, car_id: int, *, source: str = "encar") -> tuple[str, ...]:
+        return self._get_parsed(f"v1/cars/{car_id}/images", _strings, {"source": source})
+
+    def get_similar(
+        self, car_id: int, *, source: str = "encar", limit: int = 10, lang: str = "en"
+    ) -> tuple[CarSummary, ...]:
+        """Get similar Encar listings. KB ChaChaCha currently returns HTTP 501."""
+        def parse(data: Any) -> tuple[CarSummary, ...]:
+            if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+                raise TypeError("expected a list of objects")
+            return tuple(CarSummary.from_dict(item) for item in data)
+
+        return self._get_parsed(
+            f"v1/cars/{car_id}/similar", parse,
+            {"source": source, "limit": limit, "lang": lang},
+        )
+
+    def get_filters(self, *, source: str = "encar") -> FiltersResponse:
+        return self._get_object("v1/filters", FiltersResponse.from_dict, {"source": source})
+
+    def get_makes(self, *, source: str = "encar") -> tuple[str, ...]:
+        return self._get_parsed("v1/makes", _strings, {"source": source})
+
+    def get_models(self, make: str, *, source: str = "encar") -> MakeModelsResponse:
+        return self._get_object(
+            f"v1/makes/{quote(make, safe='')}/models", MakeModelsResponse.from_dict,
+            {"source": source},
+        )
+
+    def get_trims(
+        self,
+        *,
+        brand: str,
+        model: str,
+        source: str = "encar",
+        generation: str | None = None,
+        badge_group: str | None = None,
+        badge: str | None = None,
+    ) -> TrimsResponse:
+        """Discover Encar variants; pass choice.value back as the exact filter."""
+        return self._get_object(
+            "v1/trims", TrimsResponse.from_dict,
+            {
+                "brand": brand, "model": model, "source": source,
+                "generation": generation, "badge_group": badge_group, "badge": badge,
+            },
+        )
+
+    def count(
+        self,
+        *,
+        source: str = "encar",
+        brand: str | None = None,
+        model: str | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
+        currency: str = "krw",
+        mileage_min: int | None = None,
+        mileage_max: int | None = None,
+        fuel_type: str | None = None,
+        transmission: str | None = None,
+        car_type: str | None = None,
+        is_accident_free: bool | None = None,
+        sale_type: str | None = None,
+        color: str | None = None,
+        trim: str | None = None,
+        generation: str | None = None,
+        badge_group: str | None = None,
+        badge: str | None = None,
+    ) -> CountResponse:
+        """Count matching listings without fetching a page of results."""
+        return self._get_object(
+            "v1/search/count", CountResponse.from_dict,
+            {
+                "source": source, "brand": brand, "model": model,
+                "year_from": year_from, "year_to": year_to,
+                "price_min": price_min, "price_max": price_max, "currency": currency,
+                "mileage_min": mileage_min, "mileage_max": mileage_max,
+                "fuel_type": fuel_type, "transmission": transmission, "car_type": car_type,
+                "is_accident_free": is_accident_free, "sale_type": sale_type, "color": color,
+                "trim": trim, "generation": generation, "badge_group": badge_group, "badge": badge,
+            },
+        )
+
+    def _get_object(
+        self,
+        path: str,
+        parser: Callable[[dict[str, Any]], T],
+        params: dict[str, str | int | bool | None],
+    ) -> T:
+        def parse(data: Any) -> T:
+            if not isinstance(data, dict):
+                raise TypeError("expected an object")
+            return parser(data)
+
+        return self._get_parsed(path, parse, params)
+
+    def _get_parsed(
+        self,
+        path: str,
+        parser: Callable[[Any], T],
+        params: dict[str, str | int | bool | None],
+    ) -> T:
+        data = self._request(
+            "GET", path, params={key: value for key, value in params.items() if value is not None}
+        )
+        try:
+            return parser(data)
         except (KeyError, TypeError) as exc:
             raise XAPIKoreaError(f"Unexpected response from GET /{path}") from exc
 

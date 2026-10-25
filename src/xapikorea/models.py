@@ -1,7 +1,33 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+
+def _listing_url(data: dict[str, Any]) -> str | None:
+    url = data.get("listing_url")
+    if url is None and data.get("source", "encar") == "encar":
+        return data.get("encar_url")
+    return url
+
+
+def _strings(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise TypeError("expected a list of strings")
+    return tuple(value)
+
+
+def _source_metadata(data: dict[str, Any]) -> dict[str, Any]:
+    errors = data.get("source_errors", {})
+    if not isinstance(errors, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in errors.items()
+    ):
+        raise TypeError("source_errors must be an object of strings")
+    return {
+        "sources": _strings(data.get("sources", ["encar"])),
+        "partial": data.get("partial", False),
+        "source_errors": dict(errors),
+    }
 
 
 @dataclass(frozen=True)
@@ -32,35 +58,51 @@ class CarSummary:
     id: int
     manufacturer: str
     model: str
-    badge: str
-    badge_detail: str | None
-    year: str
-    mileage_km: int
-    price_krw: int
-    price_eur: float
-    fuel_type: str
-    transmission: str
-    location: str
-    thumbnail: str
-    encar_url: str
+    badge: str | None = None
+    badge_detail: str | None = None
+    year: str | None = None
+    mileage_km: int | None = None
+    price_krw: int | None = None
+    price_eur: float | None = None
+    fuel_type: str | None = None
+    transmission: str | None = None
+    location: str | None = None
+    thumbnail: str | None = None
+    encar_url: str | None = None
+    source: str = "encar"
+    listing_url: str | None = None
+    sales_status: str | None = None
+    listing_status: str | None = None
+    sale_type: str | None = None
+    lease_rent: LeaseRentTerms | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CarSummary:
+        lease_rent = data.get("lease_rent")
+        if lease_rent is not None and not isinstance(lease_rent, dict):
+            raise TypeError("lease_rent must be an object")
+
         return cls(
             id=data["id"],
             manufacturer=data["manufacturer"],
             model=data["model"],
-            badge=data["badge"],
+            badge=data.get("badge"),
             badge_detail=data.get("badge_detail"),
-            year=data["year"],
-            mileage_km=data["mileage_km"],
-            price_krw=data["price_krw"],
-            price_eur=data["price_eur"],
-            fuel_type=data["fuel_type"],
-            transmission=data["transmission"],
-            location=data["location"],
-            thumbnail=data["thumbnail"],
-            encar_url=data["encar_url"],
+            year=data.get("year"),
+            mileage_km=data.get("mileage_km"),
+            price_krw=data.get("price_krw"),
+            price_eur=data.get("price_eur"),
+            fuel_type=data.get("fuel_type"),
+            transmission=data.get("transmission"),
+            location=data.get("location"),
+            thumbnail=data.get("thumbnail"),
+            encar_url=data.get("encar_url"),
+            source=data.get("source", "encar"),
+            listing_url=_listing_url(data),
+            sales_status=data.get("sales_status"),
+            listing_status=data.get("listing_status"),
+            sale_type=data.get("sale_type"),
+            lease_rent=LeaseRentTerms.from_dict(lease_rent) if lease_rent is not None else None,
         )
 
 
@@ -71,19 +113,23 @@ class SearchResponse:
     limit: int
     results: tuple[CarSummary, ...]
     next_page: int | None
+    sources: tuple[str, ...] = ("encar",)
+    partial: bool = False
+    source_errors: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SearchResponse:
         results = data["results"]
-        if not isinstance(results, list):
-            raise TypeError("results must be a list")
+        if not isinstance(results, list) or not all(isinstance(item, dict) for item in results):
+            raise TypeError("results must be a list of objects")
 
         return cls(
             total_count=data["total_count"],
             page=data["page"],
             limit=data["limit"],
             results=tuple(CarSummary.from_dict(item) for item in results),
-            next_page=data["next_page"],
+            next_page=data.get("next_page"),
+            **_source_metadata(data),
         )
 
 
@@ -164,6 +210,10 @@ class Car:
     seizing_count: int | None = None
     pledge_count: int | None = None
     warranty: Warranty | None = None
+    source: str = "encar"
+    listing_url: str | None = None
+    sales_status: str | None = None
+    listing_status: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Car:
@@ -231,6 +281,10 @@ class Car:
                 if warranty_data is not None
                 else None
             ),
+            source=data.get("source", "encar"),
+            listing_url=_listing_url(data),
+            sales_status=data.get("sales_status"),
+            listing_status=data.get("listing_status"),
         )
 
 
@@ -302,3 +356,126 @@ class InspectionReport:
             inspection_report_url=data.get("inspection_report_url"),
             inspection_report_print_url=data.get("inspection_report_print_url"),
         )
+
+
+@dataclass(frozen=True)
+class InsuranceHistory:
+    available: bool = True
+    accident_report_url: str | None = None
+    had_insurance_accident: bool | None = None
+    accident_count: int | None = None
+    accident_cost_krw: int | None = None
+    other_accident_count: int | None = None
+    other_accident_cost_krw: int | None = None
+    owner_change_count: int | None = None
+    was_flooded: bool | None = None
+    was_total_loss: bool | None = None
+    was_stolen: bool | None = None
+    used_as_rental: bool | None = None
+    used_as_commercial: bool | None = None
+    used_as_government: bool | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> InsuranceHistory:
+        return cls(
+            available=data.get("available", True),
+            accident_report_url=data.get("accident_report_url"),
+            had_insurance_accident=data.get("had_insurance_accident"),
+            accident_count=data.get("accident_count"),
+            accident_cost_krw=data.get("accident_cost_krw"),
+            other_accident_count=data.get("other_accident_count"),
+            other_accident_cost_krw=data.get("other_accident_cost_krw"),
+            owner_change_count=data.get("owner_change_count"),
+            was_flooded=data.get("was_flooded"),
+            was_total_loss=data.get("was_total_loss"),
+            was_stolen=data.get("was_stolen"),
+            used_as_rental=data.get("used_as_rental"),
+            used_as_commercial=data.get("used_as_commercial"),
+            used_as_government=data.get("used_as_government"),
+        )
+
+
+@dataclass(frozen=True)
+class FiltersResponse:
+    manufacturers: tuple[str, ...]
+    fuel_types: tuple[str, ...]
+    transmissions: tuple[str, ...]
+    body_styles: tuple[str, ...]
+    sort_options: tuple[str, ...]
+    colors: tuple[str, ...] = ()
+    trims: tuple[str, ...] = ()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FiltersResponse:
+        return cls(
+            manufacturers=_strings(data["manufacturers"]),
+            fuel_types=_strings(data["fuel_types"]),
+            transmissions=_strings(data["transmissions"]),
+            body_styles=_strings(data["body_styles"]),
+            sort_options=_strings(data["sort_options"]),
+            colors=_strings(data.get("colors", [])),
+            trims=_strings(data.get("trims", [])),
+        )
+
+
+@dataclass(frozen=True)
+class MakeModelsResponse:
+    make: str
+    models: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MakeModelsResponse:
+        return cls(make=data["make"], models=_strings(data["models"]))
+
+
+@dataclass(frozen=True)
+class TrimChoice:
+    value: str
+    label: str
+    count: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TrimChoice:
+        return cls(value=data["value"], label=data["label"], count=data["count"])
+
+
+@dataclass(frozen=True)
+class TrimsResponse:
+    brand: str
+    model: str
+    generation: str | None = None
+    badge_group: str | None = None
+    badge: str | None = None
+    generations: tuple[TrimChoice, ...] = ()
+    badge_groups: tuple[TrimChoice, ...] = ()
+    badges: tuple[TrimChoice, ...] = ()
+    trims: tuple[TrimChoice, ...] = ()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TrimsResponse:
+        choices = {}
+        for key in ("generations", "badge_groups", "badges", "trims"):
+            items = data.get(key, [])
+            if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+                raise TypeError(f"{key} must be a list of objects")
+            choices[key] = tuple(TrimChoice.from_dict(item) for item in items)
+        return cls(
+            brand=data["brand"],
+            model=data["model"],
+            generation=data.get("generation"),
+            badge_group=data.get("badge_group"),
+            badge=data.get("badge"),
+            **choices,
+        )
+
+
+@dataclass(frozen=True)
+class CountResponse:
+    count: int
+    sources: tuple[str, ...] = ("encar",)
+    partial: bool = False
+    source_errors: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CountResponse:
+        return cls(count=data["count"], **_source_metadata(data))

@@ -1,4 +1,4 @@
-# XAPI Korea Python SDK — Encar and KB ChaChaCha
+# XAPI Korea Python SDK
 
 [![PyPI](https://img.shields.io/pypi/v/xapikorea)](https://pypi.org/project/xapikorea/)
 

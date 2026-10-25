@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Simplify the package README title to "XAPI Korea Python SDK".
+
 ## 0.2.0
 
 - Add Encar, KB ChaChaCha and combined searches, retaining listing source,
